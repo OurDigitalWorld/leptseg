@@ -31,7 +31,8 @@ For _leptseg.py_, there are several options:
 
 ```
 usage: leptseg.py [-h] [-f FILE] [-sd] [-ft] [-l LANG] [-n] [-i] [-t] [-d]
-                  [-e EDGE] [-s] [-m] [-mw MINWIDTH] [-mh MINHEIGHT]
+                  [-e EDGE] [-r ERODE] [-s] [-m] [-mw MINWIDTH]
+                  [-mh MINHEIGHT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -47,6 +48,8 @@ required named arguments:
   -t, --text            use text detection instead of column detection
   -d, --debug           create images for each step of Leptonica segmenting
   -e EDGE, --edge EDGE  edge/margin to add to crop
+  -r ERODE, --erode ERODE
+                        erode black text on image
   -s, --save            save binarization image from Leptonica step
   -m, --missing         fill in missing block(s)
   -mw MINWIDTH, --minwidth MINWIDTH
