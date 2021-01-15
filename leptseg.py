@@ -18,7 +18,7 @@ import random
 import tempfile
 import time
 from collections import namedtuple
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from subprocess import call, run
 import ctypes, ctypes.util
 from ctypes import cdll
@@ -317,15 +317,21 @@ def mergeHocr(hocr_set,hocr_file,img_file):
     fp.close()
 
 #run through region identification
-def runThruSegProcess(infile,b_flag,c_flag,d_flag,f_flag,
+def runThruSegProcess(infile,erode,ibase,b_flag,c_flag,d_flag,f_flag,
     missing,minw,minh,edge,image_only,tmp_path):
 
     global regions
     global img, imgc, rimg
 
     rimgc = INITIAL_COLOR
+    segfile = infile
 
-    boxes = getTextRegionsFromLept(infile,b_flag,c_flag,d_flag,
+    if erode > 0:
+        eimg = erodeText(img,args.erode)
+        segfile = ibase + "_erode.jpg"
+        eimg.save(segfile)
+
+    boxes = getTextRegionsFromLept(segfile,b_flag,c_flag,d_flag,
         f_flag,minw,minh)
 
     if f_flag > 0: #use binarized image for processing
@@ -387,6 +393,16 @@ def runThruSegProcess(infile,b_flag,c_flag,d_flag,f_flag,
         else: #region is marked to skip 
             print("-",end="",flush=True)
 
+#erode option - opencv can do this faster but use PIL
+def erodeText(eimg,steps):
+    fimg = eimg.copy()
+    print("Erode, # of steps: %d" % steps,end="",flush=True)
+    for i in range(0, steps):
+        print(".",end="",flush=True)
+        fimg = fimg.filter(ImageFilter.MinFilter)
+    print("!") #all done
+    return fimg
+
 #write bytearray to hocr file
 def writeHocr(block,fhocr):
     hfile = open(fhocr, "w+b")
@@ -413,6 +429,8 @@ req_named.add_argument("-d","--debug", default=False, action="store_true",
     help="create images for each step of Leptonica segmenting")
 req_named.add_argument("-e","--edge", default=5, type=int, 
     help="edge/margin to add to crop")
+req_named.add_argument("-r","--erode", default=0, type=int, 
+    help="erode black text on image")
 req_named.add_argument("-s","--save", default=False, action="store_true",
     help="save binarization image from Leptonica step")
 req_named.add_argument("-m","--missing", default=False, action="store_true",
@@ -445,14 +463,15 @@ if args.save:
 
 img_base = args.file.split(".")[0]
 img = Image.open(args.file)
-w, h = img.size
 imgc = img.copy()
+w, h = img.size
 imgc = imgc.convert("RGB")
 rimg = ImageDraw.Draw(imgc)
 
 regions = []
 tmp_path = tempfile.mkdtemp()
-runThruSegProcess(args.file,b_flag,c_flag,d_flag,f_flag,
+runThruSegProcess(args.file,args.erode,img_base,
+    b_flag,c_flag,d_flag,f_flag,
     args.missing,args.minwidth,args.minheight,args.edge,args.image,
     tmp_path)
 
@@ -461,8 +480,9 @@ if not args.text and not args.missing:
     if args.finishtext:
         print("!") 
         regions = []
-        runThruSegProcess(img_base + "_final.jpg",b_flag,0,d_flag,f_flag,
-             False,args.minwidth,args.minheight,args.edge,args.image,
+        runThruSegProcess(img_base + "_final.jpg",0,img_base,
+             b_flag,0,d_flag,f_flag,False,
+             args.minwidth,args.minheight,args.edge,args.image,
              tmp_path)
         img.save(img_base + "_final.jpg") #reflect text processing
     if not args.skipdefault and not args.image:
